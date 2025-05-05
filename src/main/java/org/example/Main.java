@@ -1,4 +1,4 @@
-package loader;
+package org.example;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
