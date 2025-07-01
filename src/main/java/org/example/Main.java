@@ -1,3 +1,4 @@
+
 package org.example;
 
 import org.apache.commons.csv.CSVFormat;
@@ -7,6 +8,10 @@ import org.apache.commons.csv.CSVRecord;
 import java.io.IOException;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -22,7 +27,7 @@ public class Main {
         .setAllowDuplicateHeaderNames(false)
         .build();
 
-    static final private String PATH_TO_FILE = "C:\\tmp\\redata\\nsw_property_data.csv";
+    static final private String PATH_TO_FILE = "nsw_property_data.csv";
     public static void main(String[] args) {
 
         //TIP Press <shortcut actionId="ShowIntentionActions"/> with your caret at the highlighted text
@@ -38,22 +43,56 @@ public class Main {
             System.out.println("File opened");
             String headers = parser.getHeaderNames().toString();
             System.out.println("headers: " + headers);
-            // Iterate over input CSV records
-            int count = 0;
-            for (final CSVRecord record : parser)
-            {
-                // Get all of the header names and associated values from the record
-                final Map<String, String> recordValues = record.toMap();
 
-                // Write the updated values to the output CSV
-                System.out.println(recordValues.toString());
-                count++;
+            // Connect to Supabase
+            // String url = "jdbc:postgresql://db.jnghzszlarsaxxhiavcv.supabase.co:5432/postgres";
+            String url = "jdbc:postgresql://aws-0-ap-southeast-2.pooler.supabase.com:5432/postgres";
+            String user = "postgres.jnghzszlarsaxxhiavcv";
+            String password = "iangortoncsw4530";
+
+            try (Connection connection = DriverManager.getConnection(url, user, password)) {
+
+                // Iterate over input CSV records
+                int count = 0;
+                for (final CSVRecord record : parser)
+                {
+                    // Get all of the header names and associated values from the record
+                    final Map<String, String> recordValues = record.toMap();
+
+                    // TODO:
+                    String insert = String.format("INSERT INTO nsw_property_data VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", 
+                        recordValues.get("property_id"), recordValues.get("download_date"), recordValues.get("council_name"), recordValues.get("purchase_price"), 
+                        recordValues.get("address"), recordValues.get("post_code"), recordValues.get("property_type"), recordValues.get("strata_lot_number"), 
+                        recordValues.get("property_name"), recordValues.get("area"), recordValues.get("area_type"), recordValues.get("contract_date"), 
+                        recordValues.get("settlement_date"), recordValues.get("zoning"), recordValues.get("nature_of_property"), recordValues.get("primary_purpose"), 
+                        recordValues.get("legal_description"));
+                    while (insert.contains(", ,")) {
+                        insert = insert.replaceAll(", ,", ", null,");
+                    }
+
+                    try (PreparedStatement preparedStatement = connection.prepareStatement(insert)) {
+                        preparedStatement.executeUpdate();
+                        System.out.println("Data inserted");
+                    }
+
+                    // Write the updated values to the output CSV
+                    System.out.println(recordValues.toString());
+                    count++;
+                    if (count > 10) {
+                        break;
+                    }
+                }
+                System.out.println("Total records: " + count);
+
+
+
+            } catch (SQLException e) {
+                System.err.println("Inserting error: " + e.getMessage());
             }
-            System.out.println("Total records: " + count);
+
+
         } catch (IOException e) {
             System.out.println("File open failed ");
         }
-
-
     }
 }
